@@ -32,3 +32,10 @@ npm-debug.log
 /teams.pokemonshowdown.com/js/
 /teams.pokemonshowdown.com/caches/
 /teams.pokemonshowdown.com/ads.txt
+
+# Generated Capacitor and build files
+/www/
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/capacitor-cordova-android-plugins/build/

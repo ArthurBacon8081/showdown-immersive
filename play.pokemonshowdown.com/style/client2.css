@@ -2527,3 +2527,86 @@ pre.textbox.textbox-empty[placeholder]:before {
 .dark .userlist span {
 	text-shadow: 1px 1px 0 #222222;
 }
+
+/* Showdown Immersive */
+.battle-immersive-layout {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	box-sizing: border-box;
+	padding-top: 36px;
+	overflow: hidden;
+}
+
+.battle-immersive-main {
+	position: relative;
+	height: 100%;
+	flex-shrink: 0;
+	overflow: auto;
+}
+
+.battle-immersive-stage {
+	position: relative;
+	margin: 0 auto;
+}
+
+.battle-immersive-actions {
+	position: fixed;
+	right: 12px;
+	bottom: 12px;
+	z-index: 10000;
+	display: flex;
+	gap: 8px;
+}
+
+.battle-immersive-toggle {
+	position: fixed;
+	right: 12px;
+	bottom: 12px;
+	z-index: 10000;
+}
+
+.battle-immersive-actions .battle-immersive-toggle {
+	position: static;
+}
+
+.battle-immersive-chat {
+	position: relative;
+	height: 100%;
+	flex: 0 0 320px;
+	min-width: 0;
+	overflow: hidden;
+	border-left: 1px solid #888;
+	background: var(--bg);
+}
+
+
+/* Hide global navigation while immersive battle is active */
+body.showdown-immersive-active #header,
+body.showdown-immersive-active .mini-header {
+	display: none !important;
+}
+
+body.showdown-immersive-active .battle-immersive-layout {
+	padding-top: 0;
+}
+body.showdown-immersive-active .ps-room {
+    top: 0;
+}
+body.showdown-immersive-active .battle-controls .inline-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    align-items: start;
+}
+
+body.showdown-immersive-active .battle-controls .whatdo {
+    grid-column: 1 / -1;
+}
+
+body.showdown-immersive-active .battle-controls .movecontrols,
+body.showdown-immersive-active .battle-controls .switchcontrols {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+}

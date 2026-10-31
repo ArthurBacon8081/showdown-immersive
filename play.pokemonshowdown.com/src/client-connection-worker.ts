@@ -12,6 +12,7 @@ let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 let reconnectDelay = 1000;
 let shouldReconnect = true;
 let lastReceiveTime = Date.now();
+let hasConnected = false;
 let queue: string[] = [];
 
 self.onmessage = (event: MessageEvent) => {
@@ -75,6 +76,7 @@ function connectToServer() {
 	if (socket) {
 		socket.onopen = () => {
 			reconnectDelay = 1000;
+			hasConnected = true;
 			lastReceiveTime = Date.now();
 			postMessage({ type: 'connected' });
 			for (const msg of queue) socket?.send(msg);
@@ -89,6 +91,10 @@ function connectToServer() {
 
 		socket.onclose = () => {
 			socket = null;
+			if (!hasConnected) {
+				postMessage({ type: 'error', data: 'Initial WebSocket connection failed' });
+				return;
+			}
 			postMessage({ type: 'disconnected' });
 			scheduleReconnect();
 		};

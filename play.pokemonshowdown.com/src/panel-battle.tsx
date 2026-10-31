@@ -524,6 +524,26 @@ class BattlePanel extends PSRoomPanel<BattleRoom> {
 	/** last displayed team. will not show the most recent request until the last one is gone. */
 	team: ServerPokemon[] | null = null;
 	mobileChatShown = false;
+
+	immersiveMode = false;
+	immersiveChatShown = false;
+	toggleImmersiveChat = () => {
+		this.immersiveChatShown = !this.immersiveChatShown;
+		this.forceUpdate();
+	};
+
+	toggleImmersiveMode = () => {
+		this.immersiveMode = !this.immersiveMode;
+		document.body.classList.toggle('showdown-immersive-active', this.immersiveMode);
+		this.forceUpdate();
+	};
+
+	renderImmersiveToggle() {
+		return <button class="button battle-immersive-toggle" onClick={this.toggleImmersiveMode}>
+			{this.immersiveMode ? TL`Exit immersive` : TL`Immersive`}
+		</button>;
+	}
+
 	showMobileChat = () => {
 		this.mobileChatShown = true;
 		this.forceUpdate();
@@ -540,6 +560,10 @@ class BattlePanel extends PSRoomPanel<BattleRoom> {
 		this.focus();
 	};
 	onKey = (e: KeyboardEvent) => {
+		if (e.key.toLowerCase() === 'i' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+			this.toggleImmersiveMode();
+			return true;
+		}
 		if (e.keyCode === 33) { // Pg Up key
 			const chatLog = this.base!.getElementsByClassName('chat-log')[0] as HTMLDivElement;
 			chatLog.scrollTop = chatLog.scrollTop - chatLog.offsetHeight + 60;
@@ -631,8 +655,24 @@ class BattlePanel extends PSRoomPanel<BattleRoom> {
 		battleWidth: number,
 		overlayControls: boolean,
 	} {
-		const room = this.props.room;
-		return PS.chooseBattleLayout(room.width, room.height, PS.prefs.battlelayout);
+	const room = this.props.room;
+
+	if (this.immersiveMode) {
+		const availableWidth = room.width - (this.immersiveChatShown ? 320 : 0);
+		const scale = Math.min(
+			availableWidth / 640,
+			Math.max(0, room.height - 256) / 360
+		);
+
+		return {
+			layout: 'side-by-side',
+			battleHeight: Math.round(360 * scale),
+			battleWidth: Math.round(640 * scale),
+			overlayControls: false,
+		};
+	}
+
+	return PS.chooseBattleLayout(room.width, room.height, PS.prefs.battlelayout);
 	}
 	/** @deprecated ONLY FOR SHOWDEX */
 	private receiveRequest(request: BattleRequest | null) {}
@@ -1419,11 +1459,44 @@ class BattlePanel extends PSRoomPanel<BattleRoom> {
 		const { layout, battleHeight, battleWidth, overlayControls } = this.chooseLayout();
 		const overlayVersion = overlayControls && !!room.battle && !!room.side && !!room.request && !room.battle.ended;
 
+		if (this.immersiveMode) {
+			const chatWidth = 320;
+			const mainWidth = room.width - (this.immersiveChatShown ? chatWidth : 0);
+			return <PSPanelWrapper room={room} focusClick noScroll="hidden">
+				{hardcoreStyle}
+				<div class="battle-immersive-layout">
+					<div class="battle-immersive-main" style={`width:${mainWidth}px`}>
+						<div class="battle-immersive-stage" style={`width:${battleWidth}px;height:${battleHeight + 220}px`}>
+							<div style={`width:${battleWidth}px;height:${battleHeight}px`}>
+								<BattleDiv room={room} />
+							</div>
+							<div class="battle-controls" style={`top:${battleHeight + 10}px;width:${battleWidth}px;`}>
+								{this.renderControls(false)}
+								{this.renderConnectError()}
+							</div>
+						</div>
+					</div>
+					{this.immersiveChatShown && <div class="battle-immersive-chat" style={`width:${chatWidth}px`}>
+						<ChatLog class="battle-log hasuserlist" room={room} noSubscription hasPreempt />
+						<ChatTextEntry room={room} onMessage={this.send} onKey={this.onKey} left={0} />
+						<ChatUserList room={room} left={0} minimized />
+					</div>}
+					<div class="battle-immersive-actions">
+						<button class="button" onClick={this.toggleImmersiveChat}>
+							{this.immersiveChatShown ? TL`Hide chat` : TL`Show chat`}
+						</button>
+						{this.renderImmersiveToggle()}
+					</div>
+				</div>
+			</PSPanelWrapper>;
+		}
+
 		if (layout === 'scrolling') {
 			// low-width-low-height layout
 			// TODO: nicer phone horizontal layout
 			return <PSPanelWrapper room={room} focusClick noScroll="hidden">
 				{hardcoreStyle}
+				{this.renderImmersiveToggle()}
 				<ChatLog
 					class="battle-log hasuserlist" room={room} noSubscription hasPreempt bottom={0}
 				>
@@ -1455,6 +1528,7 @@ class BattlePanel extends PSRoomPanel<BattleRoom> {
 			// phone vertical layout
 			return <PSPanelWrapper room={room} focusClick noScroll="hidden">
 				{hardcoreStyle}
+				{this.renderImmersiveToggle()}
 				<div style={`position:relative;height:${battleHeight}px;width:${battleWidth}px;margin:0 auto`}>
 					<BattleDiv room={room} />
 				</div>
@@ -1488,6 +1562,7 @@ class BattlePanel extends PSRoomPanel<BattleRoom> {
 			const showingChat = this.mobileChatShown;
 			return <PSPanelWrapper room={room} focusClick noScroll="hidden">
 				{hardcoreStyle}
+				{this.renderImmersiveToggle()}
 				<div class="scrollable-battle-container" style={`width:${battleWidth}px;${showingChat ? 'display:none;' : ''}`}>
 					<BattleDiv room={room} />
 					{overlayVersion && <div
@@ -1529,6 +1604,7 @@ class BattlePanel extends PSRoomPanel<BattleRoom> {
 		// regular layout
 		return <PSPanelWrapper room={room} focusClick noScroll="hidden">
 			{hardcoreStyle}
+				{this.renderImmersiveToggle()}
 			<div class="scrollable-battle-container" style={`width:${battleWidth}px`}>
 				<BattleDiv room={room} />
 				{overlayVersion && <div

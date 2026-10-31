@@ -420,6 +420,10 @@ export const translations: TranslationCatalog = {
 	"Unrevealed Illusion user": null,
 	"Not revealed": null,
 	"Battle controls": null,
+	"Exit immersive": null,
+	"Immersive": null,
+	"Hide chat": null,
+	"Show chat": null,
 
 	// #endregion Battle
 

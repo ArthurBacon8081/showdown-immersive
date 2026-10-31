@@ -30,7 +30,7 @@ export class PSConnection {
 
 	constructor() {
 		const loading = PSStorage.init();
-		if (loading) {
+		if (loading && location.hostname !== "localhost") {
 			loading.then(() => {
 				this.initConnection();
 			});
@@ -108,10 +108,9 @@ export class PSConnection {
 					break;
 				case 'error':
 					console.warn(`Worker connection error: ${data}`);
+					this.worker?.terminate();
 					this.worker = null;
-					// onerror can occur on abrupt disconnects or fatal errors.
-					// handleDisconnect ensures proper cleanup and also attemps to reconnect.
-					this.handleDisconnect(); // fallback
+					this.directConnect();
 					break;
 				}
 			};
@@ -137,11 +136,7 @@ export class PSConnection {
 		const port = server.protocol === 'https' ? `:${server.port}` : `:${server.httpport!}`;
 		const url = `${server.protocol}://${server.host}${port}${server.prefix}`;
 
-		try {
-			this.socket = new SockJS(url, [], { timeout: 5 * 60 * 1000 });
-		} catch {
-			this.socket = new WebSocket(url.replace('http', 'ws') + '/websocket');
-		}
+		this.socket = new SockJS(url, [], { timeout: 5 * 60 * 1000 });
 
 		const socket = this.socket!;
 
@@ -280,8 +275,13 @@ export class PSStorage {
 		}
 		if (Config.testclient) {
 			return;
-		} else if (`${location.protocol}//${location.hostname}` === PSStorage.origin) {
-			// Same origin, everything can be kept as default
+		} else if (
+		  location.hostname === "localhost" ||
+		  location.hostname === "showdown.psim.us"
+		) {
+    // Capacitor Android: use the default server while initializing the login bridge.
+		  Config.server ||= Config.defaultserver;
+	        } else if (`${location.protocol}//${location.hostname}` === PSStorage.origin) {
 			Config.server ||= Config.defaultserver;
 			return;
 		}
@@ -294,7 +294,6 @@ export class PSStorage {
 		}
 
 		window.addEventListener('message', this.onMessage);
-
 		if (document.location.hostname !== Config.routes.client) {
 			const iframe = document.createElement('iframe');
 			iframe.src = 'https://' + Config.routes.client + '/crossdomain.php?host=' +
@@ -456,17 +455,19 @@ export const PSLoginServer = new class {
 		// }
 		data.act = act;
 		let url = '/~~' + PS.server.id + '/action.php';
-		if (location.pathname.endsWith('.html')) {
+		if (location.hostname === 'localhost' || location.pathname.endsWith('.html')) {
 			url = 'https://' + Config.routes.client + url;
 			if (typeof POKEMON_SHOWDOWN_TESTCLIENT_KEY === 'string') {
 				data.sid = POKEMON_SHOWDOWN_TESTCLIENT_KEY.replace(/%2C/g, ',');
 			}
 		}
-		return PSStorage.request('POST', url, data) || Net(url).get({ method: 'POST', body: data }).then(
+		const sendRequest = () => PSStorage.request('POST', url, data) || Net(url).get({ method: 'POST', body: data }).then(
 			res => res ?? null
 		).catch(
 			() => null
 		);
+		const loading = PSStorage.init();
+		return loading ? loading.then(sendRequest).catch(() => null) : sendRequest();
 	}
 	query(act: string, data: PostData = {}): Promise<{ [k: string]: any } | null> {
 		return this.rawQuery(act, data).then(
